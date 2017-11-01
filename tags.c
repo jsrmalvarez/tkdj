@@ -1,7 +1,74 @@
 #include "libtags.h"
 #include <string.h>
+#include <unistd.h>
+#include <getopt.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+/*
+tags tag1 tag2 ... tagN -t file1.a file2.b ... fileN.z
+tags tag1 tag2 ... tagN -u file1.a file2.b ... fileN.z
+tags tag1 tag2 ... tagN
+*/
 
 int main(int argc, char** args){
+
+  opterr = 0;
+
+  int c;
+  int tag_count = -1;
+  int files_first_index = -1;
+  int command = -1;
+
+  while((c = getopt(argc, args, "tu")) != -1){
+    switch(c){
+      case 't':
+      case 'u':
+        command = c;
+        if(tag_count == -1){
+          tag_count = optind - 2;
+          files_first_index = optind;
+        }
+        else{
+          fprintf(stderr, "%s: only one 't' or 'u' option is allowed\n", args[0]);
+          return 1;
+        }
+        break;
+      case '?':
+          fprintf(stderr, "%s: invalid option\n", args[0]);
+          return 1;
+        break;
+    }
+  }
+
+  char** tags = malloc(tag_count*sizeof(char*));
+  size_t t = 0;
+  for(int tag_i = 2; tag_i < tag_count+2; tag_i++){
+    //printf("args[%d] = %s\n", tag_i, args[tag_i]);
+    tags[t] = args[tag_i];
+    t++;
+  }
+
+  for(int file_i = files_first_index; file_i < argc; file_i++){
+    if(command == 'u'){
+      printf("Untag file %s with tags", args[file_i]);
+      tags_untag_file(args[file_i], tag_count, tags);
+    }
+    else{
+      printf("Tag file %s with tags", args[file_i]);
+      tags_tag_file(args[file_i], tag_count, tags);
+    }
+
+    for(t = 0; t < tag_count; t++){
+      printf(" %s", tags[t]);
+    }
+    printf("\n");
+  }
+
+  free(tags);
+
+  return 0;
+/*
   bool done;
   if(argc < 3){
     done = false;
@@ -34,4 +101,5 @@ int main(int argc, char** args){
   }
 
   return done ? 0 : 1;
+  */
 }
