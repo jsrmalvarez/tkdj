@@ -40,6 +40,17 @@ bool perform_md5sum_file(FILE* file, uint8_t* md5){
   return done;
 }
 
+bool perform_md5sum_file_path(const char* path, unsigned char* md5){
+  bool done = false;
+  FILE* file;
+
+  if((file = fopen(path, "r")) != NULL){
+    done = perform_md5sum_file(file, md5);
+    fclose(file);
+  }
+  return done;
+}
+
 void delete_hashtag(sqlite3* db, sqlite3_int64 hash_index, const char* tag){
   sqlite3_stmt* stmt;
   int sqlite3_result;
@@ -331,16 +342,10 @@ bool tags_tag_file(const char* path, size_t tagc, char** tags){
   bool done;
 
   unsigned char md5[MD5_DIGEST_LENGTH];
-  FILE* file;
-
-  if((file = fopen(path, "r")) == NULL){
+  if(!perform_md5sum_file_path(path, md5)){
     done = false;
-    fclose(file);
     return done;
   }
-
-  perform_md5sum_file(file, md5);
-  fclose(file);
 
   sqlite3* db;
   int sqlite3_result;
@@ -396,16 +401,10 @@ bool tags_untag_file(const char* path, size_t tagc, char** tags){
   bool done;
 
   unsigned char md5[MD5_DIGEST_LENGTH];
-  FILE* file;
-
-  if((file = fopen(path, "r")) == NULL){
+  if(!perform_md5sum_file_path(path, md5)){
     done = false;
-    fclose(file);
     return done;
   }
-
-  perform_md5sum_file(file, md5);
-  fclose(file);
 
   sqlite3* db;
   int sqlite3_result;
@@ -444,16 +443,10 @@ bool tags_list_file(const char* path){
   bool done;
 
   unsigned char md5[MD5_DIGEST_LENGTH];
-  FILE* file;
-
-  if((file = fopen(path, "r")) == NULL){
+  if(!perform_md5sum_file_path(path, md5)){
     done = false;
-    fclose(file);
     return done;
   }
-
-  perform_md5sum_file(file, md5);
-  fclose(file);
 
   sqlite3* db;
   int sqlite3_result;
@@ -491,6 +484,9 @@ bool tags_list_file(const char* path){
             free(tags[t]);
           }
           free(tags);
+        }
+        else{
+          printf("no tags\n");
         }
       }
     }

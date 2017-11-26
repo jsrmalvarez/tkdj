@@ -1,5 +1,5 @@
 all: libtags.c tags.c
-	gcc -Wall -o tags $^ -lsqlite3 -lcrypto -std=c99	
+	gcc -Wall -g -o tags $^ -lsqlite3 -lcrypto -std=c99	
 
 .PHONY: clean
 

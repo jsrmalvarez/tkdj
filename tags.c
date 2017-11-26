@@ -41,31 +41,49 @@ int main(int argc, char** args){
     }
   }
 
-  char** tags = malloc(tag_count*sizeof(char*));
-  size_t t = 0;
-  for(int tag_i = 2; tag_i < tag_count+2; tag_i++){
-    //printf("args[%d] = %s\n", tag_i, args[tag_i]);
-    tags[t] = args[tag_i];
-    t++;
+  if(files_first_index == -1){
+    for(int file_i = 2; file_i < argc; file_i++){
+      printf("Tags for file %s:\n", args[file_i]);
+      tags_list_file(args[file_i]);
+    }
+
   }
-
-  for(int file_i = files_first_index; file_i < argc; file_i++){
-    if(command == 'u'){
-      printf("Untag file %s with tags", args[file_i]);
-      tags_untag_file(args[file_i], tag_count, tags);
-    }
-    else{
-      printf("Tag file %s with tags", args[file_i]);
-      tags_tag_file(args[file_i], tag_count, tags);
+  else{
+    char** tags = malloc(tag_count*sizeof(char*));
+    size_t t = 0;
+    for(int tag_i = 2; tag_i < tag_count+2; tag_i++){
+      //printf("args[%d] = %s\n", tag_i, args[tag_i]);
+      tags[t] = args[tag_i];
+      t++;
     }
 
-    for(t = 0; t < tag_count; t++){
-      printf(" %s", tags[t]);
+    for(int file_i = files_first_index; file_i < argc; file_i++){
+      if(command == 'u'){
+        if(tags_untag_file(args[file_i], tag_count, tags)){
+          printf("Untag file %s with tags", args[file_i]);
+        }
+        else{
+          printf("Did not untagged file %s with tags", args[file_i]);
+        }
+      }
+      else if(command == 't'){
+        if(tags_tag_file(args[file_i], tag_count, tags)){
+          printf("Tag file %s with tags", args[file_i]);
+        }
+        else{
+          printf("Did not tagged file %s with tags", args[file_i]);
+        }
+      }
+
+      for(t = 0; t < tag_count; t++){
+        printf(" %s", tags[t]);
+      }
+      printf("\n");
     }
-    printf("\n");
+
+
+    free(tags);
   }
-
-  free(tags);
 
   return 0;
 /*
