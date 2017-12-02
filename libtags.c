@@ -51,7 +51,7 @@ bool perform_md5sum_file_path(const char* path, unsigned char* md5){
   return done;
 }
 
-void delete_hashtag(sqlite3* db, sqlite3_int64 hash_index, const char* tag){
+bool delete_hashtag(sqlite3* db, sqlite3_int64 hash_index, const char* tag){
   sqlite3_stmt* stmt;
   int sqlite3_result;
 
@@ -59,34 +59,35 @@ void delete_hashtag(sqlite3* db, sqlite3_int64 hash_index, const char* tag){
   sqlite3_result = sqlite3_prepare_v2(db, "delete from hashtags where id = ? and tag = ?;", -1, &stmt, 0);
   if(sqlite3_result != SQLITE_OK){
     print_error(__LINE__, sqlite3_result, db);
-    return;
+    return false;
   }
 
   // Bind data
   sqlite3_bind_int64(stmt, 1, hash_index);
   if(sqlite3_result != SQLITE_OK){
     print_error(__LINE__, sqlite3_result, db);
-    return;
+    return false;
   }
 
   sqlite3_bind_text(stmt, 2, tag, strlen(tag), SQLITE_STATIC);
   if(sqlite3_result != SQLITE_OK){
     print_error(__LINE__, sqlite3_result, db);
-    return;
+    return false;
   }
 
   // Perform
   sqlite3_result = sqlite3_step(stmt);
 
   if(sqlite3_result == SQLITE_DONE){
+    return true;
   }
   else{
     print_error(__LINE__, sqlite3_result, db);
+    return false;
   }
 }
 
 bool insert_new_hashtag(sqlite3* db, sqlite3_int64 hash_index, const char* tag){
-  bool done;
   sqlite3_stmt* stmt;
   int sqlite3_result;
 
@@ -95,42 +96,35 @@ bool insert_new_hashtag(sqlite3* db, sqlite3_int64 hash_index, const char* tag){
 
   if(sqlite3_result != SQLITE_OK){
     print_error(__LINE__, sqlite3_result, db);
-    done = false;
-    return done;
+    return false;
   }
 
   // Bind data
   sqlite3_bind_int64(stmt, 1, hash_index);
   if(sqlite3_result != SQLITE_OK){
     print_error(__LINE__, sqlite3_result, db);
-    done = false;
-    return done;
+    return false;
   }
 
   sqlite3_bind_text(stmt, 2, tag, strlen(tag), SQLITE_STATIC);
   if(sqlite3_result != SQLITE_OK){
     print_error(__LINE__, sqlite3_result, db);
-    done = false;
-    return done;
+    return false;
   }
 
   // Perform
   sqlite3_result = sqlite3_step(stmt);
 
   if(sqlite3_result == SQLITE_DONE){
-    done = true;
+    return true;
   }
   else{
     print_error(__LINE__, sqlite3_result, db);
-    done = false;
+    return false;
   }
-
-
-  return done;
 }
 
 bool insert_new_hash(sqlite3* db, const void* hash_bytes, size_t hash_size, sqlite3_int64* index){
-  bool done;
   sqlite3_stmt* stmt;
   int sqlite3_result;
 
@@ -139,8 +133,7 @@ bool insert_new_hash(sqlite3* db, const void* hash_bytes, size_t hash_size, sqli
 
   if(sqlite3_result != SQLITE_OK){
     print_error(__LINE__, sqlite3_result, db);
-    done = false;
-    return done;
+    return false;
   }
 
   // Bind data
@@ -148,24 +141,20 @@ bool insert_new_hash(sqlite3* db, const void* hash_bytes, size_t hash_size, sqli
 
   if(sqlite3_result != SQLITE_OK){
     print_error(__LINE__, sqlite3_result, db);
-    done = false;
-    return done;
+    return false;
   }
 
   // Perform
   sqlite3_result = sqlite3_step(stmt);
 
   if(sqlite3_result == SQLITE_DONE){
-    done = true;
     *index = (uint64_t)sqlite3_last_insert_rowid(db);
+    return true;
   }
   else{
     print_error(__LINE__, sqlite3_result, db);
-    done = false;
+    return false;
   }
-
-
-  return done;
 }
 
 bool search_hashtag_index(sqlite3* db, sqlite3_int64 hash_index, const char* tag){
@@ -339,11 +328,10 @@ bool get_tags_for_index(sqlite3* db, sqlite3_int64 hash_index, char*** tags, siz
 
 bool tags_tag_file(const char* path, size_t tagc, char** tags){
 
-  bool done;
+  bool done = false;
 
   unsigned char md5[MD5_DIGEST_LENGTH];
   if(!perform_md5sum_file_path(path, md5)){
-    done = false;
     return done;
   }
 
@@ -357,7 +345,6 @@ bool tags_tag_file(const char* path, size_t tagc, char** tags){
   if(sqlite3_result != SQLITE_OK){
     print_error(__LINE__, sqlite3_result, db);
     sqlite3_close(db);
-    done = false;
   }
   else{
     // If hash is not already saved, save it
@@ -370,39 +357,28 @@ bool tags_tag_file(const char* path, size_t tagc, char** tags){
 
     if(is_md5_in_db){
       // Check if relation exists. If not, make it.
+      done = true;
       for(int t = 0; t < tagc; t++){
-        bool is_relation_in_db = search_hashtag_index(db, index, tags[t]);
+        volatile bool is_relation_in_db = search_hashtag_index(db, index, tags[t]);
         if(!is_relation_in_db){
           is_relation_in_db = insert_new_hashtag(db, index, tags[t]);
         }
 
-        if(is_relation_in_db){
-          done = true;
-        }
-        else{
-          done = false;
-        }
+        done = done || is_relation_in_db;
       }
     }
-    else{
-      done = false;
-    } 
-
   }
 
   sqlite3_close(db);
   return done;
-  
-
 }
 
 bool tags_untag_file(const char* path, size_t tagc, char** tags){
 
-  bool done;
+  bool done = false;
 
   unsigned char md5[MD5_DIGEST_LENGTH];
   if(!perform_md5sum_file_path(path, md5)){
-    done = false;
     return done;
   }
 
@@ -416,7 +392,6 @@ bool tags_untag_file(const char* path, size_t tagc, char** tags){
   if(sqlite3_result != SQLITE_OK){
     print_error(__LINE__, sqlite3_result, db);
     sqlite3_close(db);
-    done = false;
   }
   else{
     // Search for hash
@@ -430,7 +405,8 @@ bool tags_untag_file(const char* path, size_t tagc, char** tags){
     else{
       // Delete hashtag relations
       for(int t = 0; t < tagc; t++){
-        delete_hashtag(db, index, tags[t]);
+        volatile bool result = delete_hashtag(db, index, tags[t]);
+        done = done || result;
       }
     }
   }

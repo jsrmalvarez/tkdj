@@ -13,19 +13,30 @@ tags tag1 tag2 ... tagN
 
 int main(int argc, char** args){
 
+/*
+  printf("argc %d\n", argc);
+  printf("args:");
+  for(size_t n = 0; n < argc; n++){
+    printf("\n%d: %s", n, args[n]);
+  }
+  printf("\n");
+  return 0;
+*/
+
   opterr = 0;
 
   int c;
   int tag_count = -1;
   int files_first_index = -1;
   int command = -1;
+  size_t option_count = 0;
 
   while((c = getopt(argc, args, "tu")) != -1){
     switch(c){
       case 't':
       case 'u':
         command = c;
-        if(tag_count == -1){
+        if(option_count == 0){
           tag_count = optind - 2;
           files_first_index = optind;
         }
@@ -39,12 +50,16 @@ int main(int argc, char** args){
           return 1;
         break;
     }
+    option_count++;
   }
 
-  if(files_first_index == -1){
-    for(int file_i = 2; file_i < argc; file_i++){
+  if(option_count == 0){
+    for(int file_i = 1; file_i < argc; file_i++){
       printf("Tags for file %s:\n", args[file_i]);
       tags_list_file(args[file_i]);
+      if(file_i < argc - 1){
+        printf("\n");
+      }
     }
 
   }
@@ -52,7 +67,6 @@ int main(int argc, char** args){
     char** tags = malloc(tag_count*sizeof(char*));
     size_t t = 0;
     for(int tag_i = 2; tag_i < tag_count+2; tag_i++){
-      //printf("args[%d] = %s\n", tag_i, args[tag_i]);
       tags[t] = args[tag_i];
       t++;
     }
@@ -63,7 +77,7 @@ int main(int argc, char** args){
           printf("Untag file %s with tags", args[file_i]);
         }
         else{
-          printf("Did not untagged file %s with tags", args[file_i]);
+          printf("Did not fully untagged file %s with tags", args[file_i]);
         }
       }
       else if(command == 't'){
@@ -71,7 +85,7 @@ int main(int argc, char** args){
           printf("Tag file %s with tags", args[file_i]);
         }
         else{
-          printf("Did not tagged file %s with tags", args[file_i]);
+          printf("Did not fully tagged file %s with tags", args[file_i]);
         }
       }
 
